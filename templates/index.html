@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">
+                <i class="fas fa-file-excel text-success me-3"></i>
+                بحث ملفات Excel العربية
+            </h1>
+            <p class="lead text-muted">
+                رفع ملف Excel والبحث فيه باللغة العربية بطريقتين: الاسم أو رقم الجلوس
+            </p>
+        </div>
+
+        {% if not has_data %}
+        <!-- Data Files Section (if available) -->
+        {% if data_files %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-folder-open me-2"></i>
+                    ملفات البيانات المتاحة
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    الملفات التالية متاحة للتحميل من مجلد البيانات:
+                </p>
+                
+                {% for file in data_files %}
+                <div class="card border mb-2">
+                    <div class="card-body py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-file-excel text-success me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ file.filename }}</div>
+                                        <small class="text-muted">{{ file.size_formatted }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <form action="{{ url_for('load_data_file') }}" method="post" class="d-inline" onsubmit="showLoadingProgress(this)">
+                                    <input type="hidden" name="filename" value="{{ file.filename }}">
+                                    <button type="submit" class="btn btn-success btn-sm load-file-btn">
+                                        <i class="fas fa-play me-1"></i>
+                                        تحميل
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- File Upload Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    رفع ملف Excel جديد
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">اختر ملف Excel</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            يدعم ملفات .xlsx و .xls و .csv حتى حجم 50 ميجابايت
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="uploadBtn">
+                        <i class="fas fa-upload me-2"></i>
+                        رفع الملف
+                    </button>
+                </form>
+                
+                <!-- Upload Progress -->
+                <div class="mt-3" id="uploadProgress" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <span>جاري رفع ومعالجة الملف...</span>
+                    </div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    تعليمات الاستخدام
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>المتطلبات</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-arrow-left me-2 text-muted"></i>ملف Excel (.xlsx أو .xls)</li>
+                            <li><i class="fas fa-arrow-left me-2 text-muted"></i>حجم الملف أقل من 50 ميجابايت</li>
+                            <li><i class="fas fa-arrow-left me-2 text-muted"></i>عمود للاسماء باللغة العربية</li>
+                            <li><i class="fas fa-arrow-left me-2 text-muted"></i>عمود لأرقام الجلوس</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-search text-info me-2"></i>طرق البحث</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-user me-2 text-muted"></i>البحث بالاسم (مطابقة ذكية)</li>
+                            <li><i class="fas fa-id-card me-2 text-muted"></i>البحث برقم الجلوس</li>
+                            <li><i class="fas fa-filter me-2 text-muted"></i>نتائج مُرتبة حسب الدقة</li>
+                            <li><i class="fas fa-list me-2 text-muted"></i>تصفح النتائج بالصفحات</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Data Info and Search Section -->
+        <div class="row">
+            <div class="col-md-4">
+                <!-- Data Info -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            معلومات البيانات
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-file text-success me-2"></i>
+                            <span class="small">{{ session.get('filename', 'ملف مرفوع') }}</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-database text-info me-2"></i>
+                            <span class="small">{{ "{:,}".format(session.get('total_records', 0)) }} سجل</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-columns text-warning me-2"></i>
+                            <span class="small">{{ columns|length }} عمود</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <!-- Search Form -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search me-2"></i>
+                            البحث في البيانات
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('search') }}" method="post" id="searchForm">
+                            <div class="mb-3">
+                                <label class="form-label">نوع البحث</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="search_type" id="search_name" value="name" checked>
+                                    <label class="btn btn-outline-primary" for="search_name">
+                                        <i class="fas fa-user me-2"></i>
+                                        البحث بالاسم
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="search_type" id="search_id" value="id">
+                                    <label class="btn btn-outline-primary" for="search_id">
+                                        <i class="fas fa-id-card me-2"></i>
+                                        رقم الجلوس
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="query" class="form-label">نص البحث</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="query" name="query" 
+                                           placeholder="أدخل الاسم أو رقم الجلوس..." required>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-2"></i>
+                                        بحث
+                                    </button>
+                                </div>
+                                <div class="form-text" id="searchHelp">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <span id="searchHelpText">البحث الذكي يجد النتائج المشابهة حتى مع الاختلافات البسيطة</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Columns -->
+        {% if columns %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-columns me-2"></i>
+                    الأعمدة المتاحة في الملف
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for column in columns %}
+                    <div class="col-md-6 col-lg-4 mb-2">
+                        <div class="badge bg-secondary">
+                            {{ column }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Update search help text based on selected search type
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchTypeRadios = document.querySelectorAll('input[name="search_type"]');
+        const searchHelpText = document.getElementById('searchHelpText');
+        const queryInput = document.getElementById('query');
+        
+        function updateHelpText() {
+            const selectedType = document.querySelector('input[name="search_type"]:checked');
+            if (selectedType) {
+                if (selectedType.value === 'name') {
+                    searchHelpText.textContent = 'البحث الذكي يجد النتائج المشابهة حتى مع الاختلافات البسيطة';
+                    queryInput.placeholder = 'أدخل جزء من الاسم...';
+                } else {
+                    searchHelpText.textContent = 'البحث برقم الجلوس يجد المطابقة الدقيقة أو الجزئية';
+                    queryInput.placeholder = 'أدخل رقم الجلوس...';
+                }
+            }
+        }
+        
+        searchTypeRadios.forEach(radio => {
+            radio.addEventListener('change', updateHelpText);
+        });
+        
+        updateHelpText(); // Initial call
+    });
+    
+    // Show loading progress for file loading
+    function showLoadingProgress(form) {
+        const button = form.querySelector('.load-file-btn');
+        const originalContent = button.innerHTML;
+        
+        button.disabled = true;
+        button.innerHTML = '<div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري التحميل...';
+        
+        // Show loading message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-info mt-3';
+        alertDiv.innerHTML = `
+            <i class="fas fa-clock me-2"></i>
+            جاري معالجة الملف... قد يستغرق هذا عدة دقائق للملفات الكبيرة.
+            <div class="progress mt-2">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+            </div>
+        `;
+        
+        form.parentNode.appendChild(alertDiv);
+        
+        return true; // Allow form submission
+    }
+</script>
+{% endblock %}
